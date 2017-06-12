@@ -1,5 +1,5 @@
 #source 'http://rubygems.org'
-sources 'http://10.0.3.55:18082/repository/rubygems-group/'
+source 'http://10.0.3.55:18082/repository/rubygems-group/'
 
 gem 'cucumber', '2.4.0'
 gem 'rspec', '3.5.0'
