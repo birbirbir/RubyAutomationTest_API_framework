@@ -58,7 +58,7 @@ CMD ["/usr/bin/java",  "-jar",  "/usr/share/jenkins/jenkins.war"]
 version: '2'
 services:
   master:
-    image: around25/jenkins-docker-master
+    image: eoludotun/jenkins_docker_server:latest
     restart: always
     ports:
       - 19090:8080
@@ -152,3 +152,135 @@ ENTRYPOINT printf "$MESSAGE" && printf "ABORTING CONTAINER\\n\\n" && false
 CMD ["bash"]
 
 ===============================
+
+Ben Ruby Image with headless driver
+----------------------------------
+
+FROM ruby:2.3.3
+
+MAINTAINER Ben
+
+# Env
+ENV PHANTOMJS_VERSION 1.9.7
+
+# Install phantomjs and set in path
+RUN apt-get update && \
+  apt-get install -y vim git wget libfreetype6 libfontconfig bzip2
+
+# Install Node.js
+RUN \
+  apt-get install -y nodejs-legacy npm && \
+  npm install -g grunt-cli && \
+  npm install -g bower
+
+# Phantomjs  2.1.1
+RUN \
+  cd /usr/local/share && \
+  curl -L -O https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 && \
+  tar xjf phantomjs-2.1.1-linux-x86_64.tar.bz2 && \
+  ln -s /usr/local/share/phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/share/phantomjs && \
+  ln -s /usr/local/share/phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/phantomjs && \
+  ln -s /usr/local/share/phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/bin/phantomjs
+
+# Adding bin folders on PATH
+RUN \
+  echo "export PATH=$HOME/bin:/azk/npm/bin:$PATH" > .bashrc
+
+
+# Install bundler package manager for gems
+RUN gem install bundler
+
+#Enable as jenkins slave
+# Install a basic SSH server
+RUN apt-get install -y openssh-server
+RUN sed -i 's|session    required     pam_loginuid.so|session    optional     pam_loginuid.so|g' /etc/pam.d/sshd
+RUN mkdir -p /var/run/sshd
+
+RUN apt-get install -y openjdk-7-jdk
+
+# Add user jenkins to the image
+RUN groupadd jenkins
+RUN useradd -m jenkins  -s /bin/bash -p jenkins -g jenkins -G staff
+RUN chown -R jenkins:jenkins /usr/local
+# Set password for the jenkins user (you may want to alter this).
+#RUN echo "jenkins:jenkins" | chpasswd
+
+
+#added again
+RUN apt-get update
+#RUN PATH=$PATH:/opt/wget
+#RUN apt-get upgrade
+RUN apt-get install -y wget
+#RUN apt-get purge firefox*
+RUN wget https://ftp.mozilla.org/pub/firefox/releases/53.0/linux-x86_64/en-US/firefox-53.0.tar.bz2
+RUN tar -xjf firefox-53.0.tar.bz2
+#RUN chown +x /opt/firefox
+#RUN chmod 750 /opt/firefox
+
+RUN  mv firefox /opt/firefox53
+#RUN mv /usr/bin/firefox /usr/bin/firefoxold
+RUN ln -s /opt/firefox53/firefox /usr/bin/firefox
+RUN apt-get update
+RUN apt-get install xvfb -y
+#RUN apt-get -y update && apt-get -y install firefox
+#RUN add-apt-repository ppa:ubuntu-mozilla-security/ppa
+#RUN apt update && sudo apt install firefox
+#RUN apt-get -y install firefox
+RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.17.0/geckodriver-v0.17.0-linux64.tar.gz
+RUN tar -xvzf geckodriver-v0.17.0-linux64.tar.gz && rm geckodriver-v0.17.0-linux64.tar.gz
+RUN chmod +x geckodriver
+RUN cp geckodriver /usr/local/bin/
+#RUN PATH=$PATH: /usr/local/bin/
+RUN mv geckodriver /usr/local/bin/
+
+#install git
+RUN apt-get -y install git
+
+# Install Chrome, Xvfb and utility packages (libav for video capture), clean up
+RUN set -ex \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && sh -c 'echo "deb http://dl.google.com/linux/chrome/deb/ stable main" \
+        >> /etc/apt/sources.list.d/google.list' \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable libnss3 libgconf-2-4 \
+        xvfb unzip libav-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Chromedriver
+RUN set -ex \
+    && cd /tmp \
+    && wget -Nv http://chromedriver.storage.googleapis.com/2.27/chromedriver_linux64.zip \
+    && unzip chromedriver_linux64.zip \
+    && chmod -v +x chromedriver \
+    && mv -v chromedriver /usr/local/bin/ \
+    && rm -v chromedriver_linux64.zip
+
+RUN apt-get -y update
+#RUN apt-get install -y firefox xvfb python-pip
+
+
+CMD /bin/bash
+
+=================================
+#### DOCKERHUB AND BUILD IMAGE ######
+====================================
+
+ docker build -t jenkins-data -f Dockerfile-data .
+====
+
+docker build -t NAME_TO_CALL_IMAGE .
+====
+Log into the Docker Hub from the command line
+===============
+docker login --username=eoludotun --email=eoludotun@metabolon.com
+docker images -a
+docker build -t NAME_TO_CALL_IMAGE .
+docker tag CONTAINER_ID eoludotun/NAME_TO_CALL_IMAGE:MY_TAG
+docker push eoludotun/NAME_TO_CALL_IMAGE
+---------------------------------------------
+Rancher with persistence volume
+==============================
+data volume = docker run -d --name=rancher-server-data rancher/server true
+main server = docker run -d --restart=unless-stopped --name=rancher-server -p 8080:8080 --volumes-from=rancher-server-data rancher/server
+==========================================
+
