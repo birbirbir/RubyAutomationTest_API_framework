@@ -151,3 +151,43 @@ BUILD SCRIPT
 
  docker run --rm ${IMAGE}:latest /opt/java7/bin/java -version
  =========
+
+
+ node {
+ try {
+   err = null
+ stage ('Checkout Test Code, bundle Library and Run Acceptance Test')
+ docker.image('eoludotun/headless_ruby_images:latest').inside {
+    checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'eoleuotun', url: 'https://github.com/eoleuotun/Metabolon_FranchiseV8_UI_Test.git']]])
+ sh '''#!/bin/bash -l
+ echo $0
+ cd Franchise_UI_Test
+ pwd
+ ls -a
+ gem list
+ gem install bundle
+ gem uninstall activesupport
+ gem uninstall nokogiri
+ bundle install
+ bundle exec cucumber features/ BROWSER=phantom
+ '''
+ }
+
+ } catch (caughtError) {
+     err = caughtError
+     currentBuild.result = "FAILURE"
+ } finally {
+     // if (err) {
+
+     //     stage('Publish Results') {
+     //                     archiveArtifacts artifacts: "**/${resultsFileName}"
+      //                   junit "**/${resultsFileName}"
+     // }
+     stage("Generating Comphrensive Report For Management View") {
+                 step([$class: 'CucumberReportPublisher', fileExcludePattern: '', fileIncludePattern: '', ignoreFailedTests: false, jenkinsBasePath: '', jsonReportDirectory: '', missingFails: false, parallelTesting: false, pendingFails: false, skippedFails: false, undefinedFails: false])
+
+     }
+ }
+ }
+
+=====================
