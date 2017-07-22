@@ -1,7 +1,7 @@
 Jenkins Master
 ==============
 FROM ubuntu:16.04
-MAINTAINER Ben <eoludotun@metabolon.com>
+MAINTAINER Ben <ebenezer@sdet-world.com>
 
 EXPOSE 8080
 ENV DOCKER_COMPOSE_VERSION 1.13.0
